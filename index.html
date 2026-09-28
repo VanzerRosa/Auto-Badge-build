@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="th"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ป้ายชื่อ PowerPoint</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pptxgenjs/3.12.0/pptxgen.bundle.min.js"></script>
+<style>
+:root{color-scheme:light dark;font-family:Tahoma,sans-serif}
+body{max-width:920px;margin:auto;padding:12px}
+section{border:1px solid #8886;border-radius:8px;padding:10px;margin:10px 0}
+#dz{border:2px dashed #8888;padding:16px;text-align:center;border-radius:8px}
+#dz.o{background:#7d007e22}
+#th{display:flex;flex-wrap:wrap;gap:4px;margin-top:8px}
+#th img{width:56px;height:56px;object-fit:cover;border-radius:4px;cursor:pointer}
+textarea{width:100%;height:150px;box-sizing:border-box;font-size:15px}
+table{border-collapse:collapse;width:100%;margin-top:8px}
+td{border:1px solid #8884;padding:2px 6px}tr.b{background:#e5393522}
+button{padding:6px 12px;margin:2px}.p{background:#7d007e;color:#fff;border:0;border-radius:6px}
+label{display:inline-block;margin:3px 10px 3px 0}
+</style></head><body>
+<h2>ป้ายชื่อ PowerPoint</h2>
+<section><b>คลังภาพ</b> <span id=cnt></span>
+<div id=dz>ลากรูปมาวางที่นี่ หรือ <input type=file id=f multiple accept="image/*"> โฟลเดอร์: <input type=file id=fd webkitdirectory></div>
+<button id=bm>ดึงจาก photos/ ของเว็บ</button><button id=bc>ล้างคลัง</button> <small>คลิกรูปเพื่อลบ · ภาพเก็บในเบราว์เซอร์นี้เท่านั้น</small>
+<div id=th></div></section>
+<section><b>รายชื่อ</b> (1 คนต่อบรรทัด: ยศ ชื่อ นามสกุล [รุ่น] วางจาก Excel ได้)
+<textarea id=nm>ส.อ.ปกรณ์ คำสิงห์
+ส.ท.สบดี ล้านศรี
+พลฯ พิทักษ์ กิ่งแก้ว ส.20/66
+พลฯ ชัชวาล อินกอง พ.27/69</textarea>
+<button id=bk>ตรวจสอบ</button><button id=bg class=p>สร้าง .pptx</button> <span id=st></span><table id=tb></table></section>
+<details><summary>ตั้งค่า</summary><div id=cf></div></details>
+<script>
+const $=i=>document.getElementById(i),I=v=>v/2.54;
+let st={};try{st=JSON.parse(localStorage.c||'{}')}catch{}
+const C={unit:'ร.2 พัน.2 รอ.',font:'TH SarabunPSK',text:'#FFFF00',box:'#7D007E',gap:2.5,zoom:1.8,...st};
+const LB={bw:10,bh:20,iw:9.7,ih:10.8,ng:.45,rh:2,rg:.225,rp:65,fp:80,lp:60,wp:50},
+LN={bw:13,bh:19.8,iw:12.7,ih:12.5,ng:.15,rp:66,fp:88,lp:66};
+const lb={unit:'สังกัด',font:'ฟอนต์',text:'สีอักษร',box:'สีบัตร',gap:'ระยะห่างบัตร(ซม.)',zoom:'ซูมรูป'};
+for(const k in lb){const l=document.createElement('label'),e=document.createElement('input');
+ e.value=C[k];if(/text|box/.test(k))e.type='color';e.onchange=()=>{C[k]=isNaN(C[k])?e.value:+e.value;try{localStorage.c=JSON.stringify(C)}catch{}};
+ l.append(lb[k]+' ',e);$('cf').append(l)}
+// ---------- คลังภาพ (IndexedDB) ----------
+const db=new Promise((r,j)=>{const q=indexedDB.open('badge',1);q.onupgradeneeded=()=>q.result.createObjectStore('p');q.onsuccess=()=>r(q.result);q.onerror=j});
+const tx=async(m,f)=>{const d=await db;return new Promise((r,j)=>{const t=d.transaction('p',m),q=f(t.objectStore('p'));t.oncomplete=()=>r(q.result);t.onerror=j})};
+let lib=new Map();
+async function load(){const k=await tx('readonly',s=>s.getAllKeys()),v=await tx('readonly',s=>s.getAll());lib=new Map(k.map((x,i)=>[x,v[i]]));draw()}
+async function add(fs){for(const f of fs)if(/\.(jpe?g|png|webp|bmp)$/i.test(f.name)){lib.set(f.name,f);await tx('readwrite',s=>s.put(f,f.name))}draw()}
+function draw(){$('cnt').textContent=`(${lib.size} รูป)`;$('th').replaceChildren(...[...lib].slice(0,120).map(([n,b])=>{
+ const i=new Image();i.src=URL.createObjectURL(b);i.title=n;i.onclick=async()=>{if(confirm('ลบ '+n+'?')){lib.delete(n);await tx('readwrite',s=>s.delete(n));draw()}};return i}))}
+$('f').onchange=e=>add(e.target.files);$('fd').onchange=e=>add(e.target.files);
+$('dz').ondragover=e=>{e.preventDefault();$('dz').className='o'};$('dz').ondragleave=()=>$('dz').className='';
+$('dz').ondrop=e=>{e.preventDefault();$('dz').className='';add(e.dataTransfer.files)};
+$('bc').onclick=async()=>{if(confirm('ล้างคลังภาพทั้งหมด?')){await tx('readwrite',s=>s.clear());lib.clear();draw()}};
+$('bm').onclick=async()=>{try{const m=await (await fetch('photos/manifest.json')).json();let n=0;
+ for(const f of m){$('st').textContent=`โหลด ${++n}/${m.length}`;const r=await fetch('photos/'+encodeURIComponent(f));
+  await add([new File([await r.blob()],f)])}$('st').textContent='โหลดเสร็จ'}catch(e){alert('ไม่พบ photos/manifest.json')}};
+// ---------- แยกชื่อ ----------
+const RK=['พลฯ','ส.ต.','ส.ท.','ส.อ.','ส.ต.ต.','ส.ต.ท.','ส.ต.อ.','จ.ส.ต.','จ.ส.ท.','จ.ส.อ.','ร.ต.','ร.ท.','ร.อ.','พ.ต.','พ.ท.','พ.อ.','พล.ต.','นาย','นาง','นางสาว'].sort((a,b)=>b.length-a.length);
+const BR=/^(?:[ก-ฮ]{1,3}\.?)?\d{1,3}\/\d{1,3}$/;
+const norm=s=>s.normalize('NFC').replace(/[\u00a0\u200b\ufeff]/g,'').replace(/[\t\u3000\r\n]+/g,' ').replace(/(\d)\s*\/\s*(\d)/g,'$1/$2').replace(/([ก-ฮ]\.)\s+(\d{1,3}\/\d{1,3})/g,'$1$2').replace(/\s+/g,' ').trim();
+function parse(line){const t=norm(line);if(!t)return null;let k=t.split(' '),rank='';
+ for(const r of RK)if(k[0].startsWith(r)){rank=r;const m=k[0].slice(r.length);k=(m?[m]:[]).concat(k.slice(1));break}
+ let batch='',n=k;const i=k.findIndex((x,j)=>j>0&&BR.test(x));
+ if(i>0){batch=k.slice(i).join(' ');n=k.slice(0,i)}else if(k.length>2){batch=k.slice(2).join(' ');n=k.slice(0,2)}
+ return n[0]?{rank,first:n[0],last:n.slice(1).join(' '),batch}:null}
+const names=()=>$('nm').value.split('\n').map(parse).filter(Boolean);
+// ---------- จับคู่รูป: ชื่อ -> นามสกุล -> ตัวย่อ ----------
+const stem=n=>norm(n.replace(/\.[^.]+$/,''));
+function hasIni(s,f,ini){let t=s;for(const r of RK)if(t.startsWith(r)){t=t.slice(r.length).trim();break}
+ t=t.replace(/[ก-ฮ]{0,3}\.?\d{1,3}\/\d{1,3}/g,' ').replace(f,' ');return new RegExp('(?<![ก-ฮ])'+ini.replace('.','\\.')).test(t)}
+function find(f,l){const N=[...lib.keys()].map(n=>[n,stem(n)]),srt=a=>a.sort((x,y)=>x[0]<y[0]?-1:1)[0][0];
+ const c=N.filter(([,s])=>f&&s.includes(f));
+ if(c.length===1)return c[0][0];
+ if(c.length>1){const ex=c.filter(([,s])=>s.split(/[\s_\-.,()]+/).includes(f));if(ex.length===1)return ex[0][0];
+  const pool=ex.length?ex:c,bl=pool.filter(([,s])=>l&&s.includes(l));if(bl.length)return srt(bl);
+  const ch=[...l].find(x=>/[ก-ฮ]/.test(x));if(ch){const bi=pool.filter(([,s])=>hasIni(s,f,ch+'.'));if(bi.length===1)return bi[0][0]}
+  return null}
+ const bl=N.filter(([,s])=>l&&s.includes(l));return bl.length===1?bl[0][0]:null}
+function check(){const tb=$('tb');tb.replaceChildren();for(const p of names()){const f=find(p.first,p.last),r=tb.insertRow();
+ if(!f||!p.last)r.className='b';for(const v of [p.rank,p.first,p.last,p.batch,f?'✔ '+f:'✖ ไม่พบ/แยกไม่ได้'])r.insertCell().textContent=v}}
+$('bk').onclick=check;
+// ---------- ครอปรูป + auto-fit ----------
+async function crop(blob,wc,hc){const b=await createImageBitmap(blob,{imageOrientation:'from-image'}),W=b.width,H=b.height,z=C.zoom;
+ let zw=W/z,zh=H/z,x=(W-zw)/2,y=(H-zh)*.005;const tr=wc/hc;
+ if(zw/zh>tr){const w=zh*tr;x+=(zw-w)/2;zw=w}else{const h=zw/tr;y+=(zh-h)*.2;zh=h}
+ const c=document.createElement('canvas');c.width=Math.round(I(wc)*200);c.height=Math.round(I(hc)*200);
+ c.getContext('2d').drawImage(b,x,y,zw,zh,0,0,c.width,c.height);return c.toDataURL('image/jpeg',.92).slice(5)}
+const cx=document.createElement('canvas').getContext('2d');
+function fit(runs,wc){cx.font=`bold 100px "${C.font}",Tahoma,sans-serif`;
+ const w=runs.reduce((s,[t,p])=>s+cx.measureText(t).width*p/100,0),k=Math.min(1,wc*28.3465*.96/(w||1));
+ return runs.map(([t,p])=>[t,Math.floor(p*k*2)/2])}
+// ---------- สร้างป้าย ----------
+async function badge(sl,x,y,P,l){const pd=.15,col=h=>h.replace('#','');
+ const R=(a,b,w,h,o)=>sl.addShape('rect',{x:I(a),y:I(b),w:I(w),h:I(h),line:{type:'none'},...o});
+ const T=(a,b,w,h,runs)=>sl.addText(runs.map(([t,p])=>({text:t,options:{fontSize:p,bold:true,color:col(C.text),fontFace:C.font}})),
+  {x:I(a),y:I(b),w:I(w),h:I(h),align:'center',valign:'middle',margin:0,fit:'none'});
+ R(x,y,l.bw,l.bh,{fill:{color:col(C.box)}});
+ const f=find(P.first,P.last);
+ if(f)sl.addImage({data:await crop(lib.get(f),l.iw,l.ih),x:I(x+pd),y:I(y+pd),w:I(l.iw),h:I(l.ih)});
+ else R(x+pd,y+pd,l.iw,l.ih,{fill:{color:'CCCCCC'}});
+ const nt=y+pd+l.ih+l.ng;let nb=y+l.bh-pd;
+ if(P.batch){const r2=y+l.bh-l.rg-l.rh,r1=r2-l.rh-l.rg;nb=r1-pd;
+  for(const [ry,tx_] of [[r2,P.unit],[r1,P.batch]]){R(x+pd,ry,l.iw,l.rh,{fill:{color:col(C.box)},line:{color:col(C.text),width:2.25}});
+   T(x+pd,ry,l.iw,l.rh,fit([[tx_,l.wp]],l.iw))}}
+ const hf=(nb-nt)/2;
+ T(x+pd,nt,l.iw,hf,fit((P.rank?[[P.rank+' ',l.rp]]:[]).concat([[P.first,l.fp]]),l.iw));
+ T(x+pd,nt+hf,l.iw,hf,fit([[P.last,l.lp]],l.iw));return !!f}
+$('bg').onclick=async()=>{const P=names().map(p=>({...p,unit:C.unit}));if(!P.length)return alert('ไม่มีรายชื่อ');
+ const g=new PptxGenJS(),SW=30.074,SH=22.556;g.defineLayout({name:'B',width:I(SW),height:I(SH)});g.layout='B';let miss=0;
+ try{for(let s=0;s<P.length;s+=2){$('st').textContent=`กำลังสร้าง ${s}/${P.length}`;
+  const pr=P.slice(s,s+2),sl=g.addSlide(),L=pr.map(p=>p.batch?LB:LN);
+  let x=(SW-L.reduce((a,l)=>a+l.bw,0)-(pr.length>1?C.gap:0))/2;const y=(SH-Math.max(...L.map(l=>l.bh)))/2;
+  for(let k=0;k<pr.length;k++){if(!await badge(sl,x,y,pr[k],L[k]))miss++;x+=L[k].bw+C.gap}}
+  await g.writeFile({fileName:'name_badges.pptx'});$('st').textContent=`เสร็จ (${miss?miss+' คนไม่มีรูป':'ครบทุกรูป'})`}
+ catch(e){$('st').textContent='ผิดพลาด: '+e.message}};
+load();
+</script></body></html>
